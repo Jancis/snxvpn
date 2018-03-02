@@ -244,8 +244,13 @@ class HTML_Requester (object) :
             self.generate_snx_info ()
             return True
         else :
-            print ("Unexpected response, try again.")
-            self.debug ("purl: %s" % self.purl)
+            errorDiv = self.soup.findAll(attrs={"class" : "errorMessage"})
+            if errorDiv:
+                errorMessage = errorDiv[0].text
+                print ("Error: " + errorMessage)
+            else :
+                print ("Unexpected response, try again.")
+                self.debug ("purl: %s" % self.purl)
             return
     # end def login
 
@@ -530,6 +535,11 @@ def main () :
         , help    = 'Skip certificate verification'
         , action='store_true'
         )
+    cmd.add_argument \
+        ( '-r', '--login-try-limit'
+        , help    = 'Login retry limit, default="%(default)s"'
+        , default = cfg.get ('login_try_limit', 3)
+        )
 
     args = cmd.parse_args ()
     if args.version :
@@ -552,7 +562,12 @@ def main () :
         if not args.password :
             args.password = getpass ('Password: ')
     rq = HTML_Requester (args)
-    result = rq.login ()
+    login_try = 0
+    while True:
+        login_try += 1
+        result = rq.login ()
+        if result or login_try >= args.login_try_limit :
+            break
     if result :
         rq.call_snx ()
 # end def main ()
